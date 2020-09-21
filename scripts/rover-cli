@@ -50,20 +50,23 @@ while True:
     # look for GGA packet
     if line.startswith(b'$GNGGA'): 
         toks = str(line).split(","); 
-        utctime = int(float(toks[1]))
-        hrs,mins,secs = utctime /1000, utctime / 100, utctime % 100 
-        lat_raw = float(toks[2]) 
-        lat = int(lat_raw / 100)  + (lat_raw - 100*int(lat_raw/100))/60.;  
-        if toks[3] == 'S': 
-            lat *=-1
-        lon_raw = float(toks[4]) 
-        lon = int(lon_raw / 100)  + (lon_raw - 100*int(lon_raw/100))/60.;  
-        if toks[5] == 'W': 
-            lon *=-1
-        fixtype = toks[6]; 
-        alt = float(toks[9]) 
-        
-        print( "At %d:%d:%dZ :  lat=%f, lon=%f, alt=%f, fixtype=%s" % (hrs,mins,secs,lat,lon,alt, fixtype))
+        try: 
+            utctime = int(float(toks[1]))
+            hrs,mins,secs = utctime /1000, utctime / 100, utctime % 100 
+            lat_raw = float(toks[2]) 
+            lat = int(lat_raw / 100)  + (lat_raw - 100*int(lat_raw/100))/60.;  
+            if toks[3] == 'S': 
+                lat *=-1
+            lon_raw = float(toks[4]) 
+            lon = int(lon_raw / 100)  + (lon_raw - 100*int(lon_raw/100))/60.;  
+            if toks[5] == 'W': 
+                lon *=-1
+            fixtype = toks[6]; 
+            alt = float(toks[9]) 
+            
+            print( "At %d:%d:%dZ :  lat=%f, lon=%f, alt=%f, fixtype=%s" % (hrs,mins,secs,lat,lon,alt, fixtype))
+        except ValueError as v: 
+            pass
 
     #look for ubx nedpos packet
     #TODO make this more robust for any UBX packet to avoid hiding this one 
