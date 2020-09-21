@@ -140,7 +140,7 @@ def serial_thread(device,baudrate):
     leftover_line = "" 
 
     reading = {} 
-    gps_serial = serial.Serial(device,baudrate) 
+    gps_serial = serial.Serial(device,baudrate,timeout=1) 
     serial_done = False
     print(gps_serial) 
     reading['idx']=0.
@@ -150,6 +150,9 @@ def serial_thread(device,baudrate):
     while keep_reading: 
 #        print ("I am here") 
         line = leftover_line if len(leftover_line) else gps_serial.readline() 
+        if not keep_reading: 
+            print ("Interrupted!") 
+            return 
 
         #print(line) 
 
@@ -194,6 +197,9 @@ def serial_thread(device,baudrate):
 
             # there may be a line return in the binary data, make sure it's long enough for payload + 6 header + 2 checksum bytes
             while (len(line) < payload_len + 6 + 2): 
+                if  not keep_reading: 
+                    print("Interrupted!!") 
+                    return 
                 newline = gps_serial.readline() 
                 line = line +  gps_serial.readline() 
 
@@ -490,13 +496,17 @@ class RoverApp(Gtk.Application):
         Gtk.Application.do_startup(self) 
 
 
+def handle_sigint(signum,frame): 
+    print("Detected Ctrl-C interrupt") 
+    app.win.stop_thread() 
+    app.quit() 
 
 
 if __name__=="__main__": 
     initTheArrs() 
 #    GObject.threads_init() 
     app = RoverApp()
-    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, app.quit)
+    signal.signal(signal.SIGINT, handle_sigint) 
     app.run() 
     sys.exit(0) 
 
