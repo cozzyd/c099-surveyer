@@ -142,7 +142,7 @@ def clearReadings():
 def serial_thread(device,baudrate): 
     global keep_reading
     global serial_done 
-    leftover_line = "" 
+    leftover_line = None 
 
     reading = {} 
     gps_serial = serial.Serial(device,baudrate,timeout=1) 
@@ -154,7 +154,7 @@ def serial_thread(device,baudrate):
     stat_line = "" 
     while keep_reading: 
 #        print ("I am here") 
-        line = leftover_line if len(leftover_line) else gps_serial.readline() 
+        line = leftover_line if leftover_line!=None else gps_serial.readline() 
         if not keep_reading: 
             print ("Interrupted!") 
             return 
@@ -223,7 +223,7 @@ def serial_thread(device,baudrate):
             flags_dict['isMoving'] =  0 != (flags & 0x20 )
 
 
-            if (flags_dict['relPosValid'] and lat in reading ):
+            if (flags_dict['relPosValid'] and "lat" in reading ):
 
                 ###MUST DO SOME SANITY CHECKS HERE #### 
 
@@ -234,7 +234,7 @@ def serial_thread(device,baudrate):
                 reading['sigmaN'] = min(1000,accN*0.1);
                 reading['sigmaE'] = min(1000,accE*0.1);
                 reading['sigmaD'] = min(1000,accD*0.1); 
-                reading['Length'] = relPosHPLength*0.1 + relPosLength if abs(relPosHPLength) < 100 else resPosLength; 
+                reading['Length'] = relPosHPLength*0.1 + relPosLength if abs(relPosHPLength) < 100 else relPosLength; 
                 reading['sigmaLength'] = min(1000,accLength * 0.1); 
                 reading['Heading']  = relHeading * 1e-5; 
                 reading['sigmaHeading']  = min(1000,accHeading * 1e-5); 
@@ -244,8 +244,7 @@ def serial_thread(device,baudrate):
 
             leftover_line = line[payload_len + 8:]; 
         else: 
-
-          leftover_line = ""
+          leftover_line =None 
         GLib.idle_add(setStatus,stat_line) 
 
     serial_done = True
@@ -508,6 +507,7 @@ def handle_sigint(signum,frame):
 
 
 if __name__=="__main__": 
+    print("Starting Rover GUI!") 
     initTheArrs() 
 #    GObject.threads_init() 
     app = RoverApp()
