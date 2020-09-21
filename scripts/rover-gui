@@ -77,20 +77,20 @@ def clear_and_set(win):
     win.a_EN.clear() 
     win.a_EN.set_xlabel("deltaE (cm)"); 
     win.a_EN.set_ylabel("deltaN (cm)"); 
-    win.a_EN.set_aspect('equal')
+#    win.a_EN.set_aspect('equal')
 
     win.a_ND.clear() 
     win.a_ND.set_xlabel("deltaD (cm)"); 
     win.a_ND.set_ylabel("deltaN (cm)"); 
-    win.a_ND.set_aspect('equal')
+#    win.a_ND.set_aspect('equal')
 
     win.a_ED.clear() 
     win.a_ED.set_xlabel("deltaE (cm)"); 
     win.a_ED.set_ylabel("deltaH (cm)"); 
-    win.a_ED.set_aspect('equal')
+#    win.a_ED.set_aspect('equal')
     win.a_HL.clear() 
     win.a_HL.set_xlabel("Distance vs. Heading"); 
-    win.a_HL.set_aspect('equal')
+#    win.a_HL.set_aspect('equal')
 
 def addReading(reading): 
     global have_data
@@ -107,12 +107,17 @@ def addReading(reading):
     clear_and_set(app.win) 
 
 
-    app.win.a_EN.scatter(the_arrs['deltaE'], the_arrs['deltaN'], alpha=0.5)
+    EN_cut = numpy.logical_and(the_arrs['sigmaE'] < 1000, the_arrs['sigmaN'] < 1000)
+    app.win.a_EN.scatter(the_arrs['deltaE'][EN_cut], the_arrs['deltaN'][EN_cut], alpha=0.5)
 
-    app.win.a_ED.scatter(the_arrs['deltaE'], the_arrs['deltaD'], alpha =0.5)
-    app.win.a_ND.scatter(the_arrs['deltaD'], the_arrs['deltaN'], alpha =0.5)
+    ED_cut = numpy.logical_and(the_arrs['sigmaE'] < 1000, the_arrs['sigmaD'] < 1000)
+    app.win.a_ED.scatter(the_arrs['deltaE'][ED_cut], the_arrs['deltaD'][ED_cut], alpha =0.5)
 
-    app.win.a_HL.scatter(the_arrs['Heading'], the_arrs['Length'], alpha=0.5)
+    ND_cut = numpy.logical_and(the_arrs['sigmaN'] < 1000, the_arrs['sigmaD'] < 1000)
+    app.win.a_ND.scatter(the_arrs['deltaD'][ND_cut], the_arrs['deltaN'][ND_cut], alpha =0.5)
+
+    heading_cut = numpy.logical_and(the_arrs['sigmaHeading'] < 1000, the_arrs['sigmaLength'] < 1000)
+    app.win.a_HL.scatter(the_arrs['Heading'][heading_cut] * numpy.pi/180, the_arrs['Length'][heading_cut], alpha=0.5)
 
     app.win.save_button.set_sensitive(True) 
     app.win.clear_button.set_sensitive(True) 
