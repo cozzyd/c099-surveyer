@@ -1,13 +1,31 @@
 #! /usr/bin/env python 
 
-## GUI for reading from a C099 dev board that has been appropriately configured as a rover
-## Cosmin Deaconu <cozzyd@kicp.uchicago.edu> 
+###################################################################################################
+
+#   rover-gui:  GUI for reading relative position data from a C099 dev board that has been appropriately configured as a rover
+#   (C) 2020 Cosmin Deaconu <cozzyd@kicp.uchicago.edu> 
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+####################################################################################################
+
+
 
 
 
 import serial 
 import serial.tools.list_ports
-import configparser 
 import sys
 import struct
 import gi 
@@ -22,14 +40,15 @@ import threading
 
 import gi 
 gi.require_version('Gtk', '3.0') 
+
 from gi.repository import GLib,Gtk,GObject 
 
-
+#some global state
 app = None 
-
 serial_done = False 
 keep_reading = False
 
+# what we fill in! 
 the_vars = ['idx','lat','lon','alt','hrs','mins','secs','fixtype','deltaN','sigmaN','deltaE','sigmaE','deltaD','sigmaD','Length','sigmaLength','Heading','sigmaHeading', 'moving','nsats']
 the_arrs = {}  
 the_list_model = Gtk.ListStore(* ([float]* len(the_vars)) )
