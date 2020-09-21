@@ -164,32 +164,36 @@ def serial_thread(device,baudrate):
         # look for GGA packet
         if line.startswith(b'$GNGGA'): 
             toks = str(line).split(","); 
-            utctime = int(float(toks[1]))
-            
+            try:
+                utctime = int(float(toks[1]))
+                
 
-            hrs,mins,secs = int(utctime /10000), int(utctime / 100)%100, int(utctime) % 100 
-            secs += float(toks[1])-utctime 
-            lat_raw = float(toks[2]) 
-            lat = int(lat_raw / 100)  + (lat_raw - 100*int(lat_raw/100))/60.;  
-            if toks[3] == 'S': 
-                lat *=-1
-            lon_raw = float(toks[4]) 
-            lon = int(lon_raw / 100)  + (lon_raw - 100*int(lon_raw/100))/60.;  
-            if toks[5] == 'W': 
-                lon *=-1
-            fixtype = toks[6]; 
-            alt = float(toks[9]) 
-            
-            reading['hrs'] = hrs; 
-            reading['mins'] = mins; 
-            reading['secs'] = secs; 
-            reading['lat'] = lat; 
-            reading['lon'] = lon; 
-            reading['alt'] = alt; 
-            reading['fixtype'] = int(fixtype)
-            reading['nsats'] = int(toks[7]) 
+                
+                hrs,mins,secs = int(utctime /10000), int(utctime / 100)%100, int(utctime) % 100 
+                secs += float(toks[1])-utctime 
+                lat_raw = float(toks[2]) 
+                lat = int(lat_raw / 100)  + (lat_raw - 100*int(lat_raw/100))/60.;  
+                if toks[3] == 'S': 
+                    lat *=-1
+                lon_raw = float(toks[4]) 
+                lon = int(lon_raw / 100)  + (lon_raw - 100*int(lon_raw/100))/60.;  
+                if toks[5] == 'W': 
+                    lon *=-1
+                fixtype = toks[6]; 
+                alt = float(toks[9]) 
+                
+                reading['hrs'] = hrs; 
+                reading['mins'] = mins; 
+                reading['secs'] = secs; 
+                reading['lat'] = lat; 
+                reading['lon'] = lon; 
+                reading['alt'] = alt; 
+                reading['fixtype'] = int(fixtype)
+                reading['nsats'] = int(toks[7]) 
 
-            stat_line =  "At %02d:%02d:%02fZ :  lat=%f, lon=%f, alt=%f, fixtype=%s" % (hrs,mins,secs,lat,lon,alt, fixtype)
+                stat_line =  "At %02d:%02d:%02fZ :  lat=%f, lon=%f, alt=%f, fixtype=%s" % (hrs,mins,secs,lat,lon,alt, fixtype)
+            except ValueError as E: 
+                pass
 
         #look for ubx nedpos packet
         #TODO make this more robust for any UBX packet to avoid hiding this one 
