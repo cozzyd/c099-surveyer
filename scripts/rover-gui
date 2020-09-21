@@ -74,11 +74,20 @@ def clear_and_set(win):
     win.a_EN.clear() 
     win.a_EN.set_xlabel("deltaE (cm)"); 
     win.a_EN.set_ylabel("deltaN (cm)"); 
+    win.a_EN.set_aspect('equal')
+
+    win.a_ND.clear() 
+    win.a_ND.set_xlabel("deltaD (cm)"); 
+    win.a_ND.set_ylabel("deltaN (cm)"); 
+    win.a_ND.set_aspect('equal')
+
     win.a_ED.clear() 
     win.a_ED.set_xlabel("deltaE (cm)"); 
     win.a_ED.set_ylabel("deltaH (cm)"); 
+    win.a_ED.set_aspect('equal')
     win.a_HL.clear() 
     win.a_HL.set_xlabel("Distance vs. Heading"); 
+    win.a_HL.set_aspect('equal')
 
 def addReading(reading): 
 
@@ -96,6 +105,7 @@ def addReading(reading):
     app.win.a_EN.scatter(the_arrs['deltaE'], the_arrs['deltaN'], alpha=0.5)
 
     app.win.a_ED.scatter(the_arrs['deltaE'], the_arrs['deltaD'], alpha =0.5)
+    app.win.a_ND.scatter(the_arrs['deltaD'], the_arrs['deltaN'], alpha =0.5)
 
     app.win.a_HL.scatter(the_arrs['Heading'], the_arrs['Length'], alpha=0.5)
 
@@ -303,7 +313,7 @@ class RoverWindow(Gtk.ApplicationWindow):
 
     def __init__(self,app): 
         Gtk.Window.__init__(self, title="BEACON Rover GUI", application=app)
-        self.set_default_size(740,740)
+        self.set_default_size(1000,740)
         self.set_border_width(2) 
         self.thread = None
 
@@ -313,32 +323,6 @@ class RoverWindow(Gtk.ApplicationWindow):
         self.add(vbox) 
 
 
-
-        # serial device panel  at the top 
-        serialbox = Gtk.Box(spacing=5) 
-        serialframe = Gtk.Frame(label="Serial Port", child=serialbox)
-        vbox.pack_start(serialframe,False,False,3) 
-
-        self.serial_select = Gtk.ComboBoxText() 
-        self.serial_select.set_entry_text_column(0) 
-        self.fill_serial_ports() 
-
-        bauds = [9600, 14400, 38400,57600,115200, 460800,960000]
-
-        self.baud_select = Gtk.ComboBoxText() 
-        self.baud_select.set_entry_text_column(0) 
-        for baud in bauds: 
-            self.baud_select.append_text(str(baud))
-        self.baud_select.set_active(5) 
-
-
-        serialbox.pack_start(Gtk.Label(label="Port: "), False,False,2) 
-        serialbox.pack_start(self.serial_select,False,False,2)
-        serial_refresh = Gtk.Button.new_from_icon_name("view-refresh",0) 
-        serial_refresh.connect("clicked", self.fill_serial_ports)
-        serialbox.pack_start(serial_refresh,False,False,2); 
-        serialbox.pack_start(Gtk.Label(label="Baudrate: "), False,False,2) 
-        serialbox.pack_start(self.baud_select,False,False,2) 
 
         
         #control buttons 
@@ -387,26 +371,54 @@ class RoverWindow(Gtk.ApplicationWindow):
 
         #plots! 
 
-        plotbox = Gtk.Box(spacing=2) 
 
         self.fig = Figure(tight_layout =True) 
-        self.a_EN = self.fig.add_subplot(131)
+        self.a_EN = self.fig.add_subplot(141)
 
-        self.a_ED = self.fig.add_subplot(132)
-        self.a_ED.set_ylabel("deltaH (cm)"); 
+        self.a_ED = self.fig.add_subplot(142)
 
-        self.a_HL = self.fig.add_subplot(133, polar=True)
+        self.a_ND = self.fig.add_subplot(143)
+
+        self.a_HL = self.fig.add_subplot(144, polar=True)
 
         clear_and_set(self) 
+        self.fig.patch.set_facecolor('whitesmoke') 
 
         self.canvas = FigureCanvas(self.fig) 
-        plotbox.pack_start(self.canvas,True,True,10) 
-        vbox.pack_start(plotbox,True,True,2)
+        plotframe = Gtk.Frame(label="Plots",child = self.canvas) 
+        vbox.pack_start(plotframe,True,True,2)
 
-        
+         # serial device panel  at the bottom 
+        serialbox = Gtk.Box(spacing=5) 
+        serialframe = Gtk.Frame(label="Serial Port", child=serialbox)
+        vbox.pack_end(serialframe,False,False,3) 
+
+        self.serial_select = Gtk.ComboBoxText() 
+        self.serial_select.set_entry_text_column(0) 
+        self.fill_serial_ports() 
+
+        bauds = [9600, 14400, 38400,57600,115200, 460800,960000]
+
+        self.baud_select = Gtk.ComboBoxText() 
+        self.baud_select.set_entry_text_column(0) 
+        for baud in bauds: 
+            self.baud_select.append_text(str(baud))
+        self.baud_select.set_active(5) 
+
+
+        serialbox.pack_start(Gtk.Label(label="Port: "), False,False,2) 
+        serialbox.pack_start(self.serial_select,False,False,2)
+        serial_refresh = Gtk.Button.new_from_icon_name("view-refresh",0) 
+        serial_refresh.connect("clicked", self.fill_serial_ports)
+        serialbox.pack_start(serial_refresh,False,False,2); 
+        serialbox.pack_start(Gtk.Label(label="Baudrate: "), False,False,2) 
+        serialbox.pack_start(self.baud_select,False,False,2) 
+
+       
         #status_bar
         self.status_bar = Gtk.Statusbar.new() 
-        vbox.pack_end(self.status_bar,False,False,1) 
+        serialbox.pack_end(self.status_bar,False,False,1) 
+
         self.connect("delete-event", self.stop_thread)
         
 
