@@ -1,0 +1,422 @@
+#! /usr/bin/env python 
+
+## GUI for reading from a C099 dev board that has been appropriately configured as a rover
+## Cosmin Deaconu <cozzyd@kicp.uchicago.edu> 
+
+
+
+import serial 
+import serial.tools.list_ports
+import configparser 
+import sys
+import struct
+import gi 
+import time
+import numpy 
+import datetime 
+
+from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas 
+from matplotlib.figure import Figure 
+
+import threading 
+
+import gi 
+gi.require_version('Gtk', '3.0') 
+from gi.repository import GLib,Gtk,GObject 
+
+
+app = None 
+
+serial_done = False 
+keep_reading = False
+
+the_vars = ['idx','lat','lon','alt','hrs','mins','secs','fixtype','deltaN','sigmaN','deltaE','sigmaE','deltaD','sigmaD','Length','sigmaLength','Heading','sigmaHeading', 'moving','nsats']
+the_arrs = {}  
+the_list_model = Gtk.ListStore(* ([float]* len(the_vars)) )
+
+def initTheArrs():
+    for key in the_vars: 
+        the_arrs[key] = numpy.array([],dtype=numpy.float) 
+
+
+def saveToFile(f): 
+    #print(the_arrs) 
+    numpy.savetxt(f, list(the_arrs.values()), header=",".join(the_arrs.keys()), delimiter=',')
+
+def setStatus(status, force=False):  
+    global serial_done
+    if not serial_done or force: 
+        cid = app.win.status_bar.get_context_id("blah") 
+        app.win.status_bar.remove_all(cid) 
+        app.win.status_bar.push(cid,status); 
+
+def clear_and_set(win):
+
+    win.a_EN.clear() 
+    win.a_EN.set_xlabel("deltaE (cm)"); 
+    win.a_EN.set_ylabel("deltaN (cm)"); 
+    win.a_ED.clear() 
+    win.a_ED.set_xlabel("deltaE (cm)"); 
+    win.a_ED.set_ylabel("deltaH (cm)"); 
+    win.a_HL.clear() 
+    win.a_HL.set_xlabel("Distance vs. Heading"); 
+
+def addReading(reading): 
+
+    #print(reading) 
+
+    this_row = []; 
+    for key in the_vars: 
+        the_arrs[key] = numpy.append( the_arrs[key],(float(reading[key])))
+        this_row.append(float(reading[key]))
+    the_list_model.append(this_row) 
+
+    clear_and_set(app.win) 
+
+
+    app.win.a_EN.scatter(the_arrs['deltaE'], the_arrs['deltaN'], alpha=0.5)
+
+    app.win.a_ED.scatter(the_arrs['deltaE'], the_arrs['deltaD'], alpha =0.5)
+
+    app.win.a_HL.scatter(the_arrs['Heading'], the_arrs['Length'], alpha=0.5)
+
+    app.win.save_button.set_sensitive(True) 
+    app.win.clear_button.set_sensitive(True) 
+
+    app.win.canvas.draw() 
+    app.win.canvas.flush_events() 
+
+def clearReadings():
+    for key in the_vars: 
+        the_arrs[key] = numpy.array([],dtype=numpy.float) 
+    the_list_model.clear() 
+    app.win.save_button.set_sensitive(False) 
+    app.win.clear_button.set_sensitive(False) 
+    clear_and_set(app.win) 
+    app.win.canvas.draw() 
+    app.win.canvas.flush_events() 
+
+
+
+def serial_thread(device,baudrate): 
+    global keep_reading
+    global serial_done 
+    leftover_line = "" 
+
+    reading = {} 
+    gps_serial = serial.Serial(device,baudrate) 
+    serial_done = False
+    print(gps_serial) 
+    reading['idx']=0.
+
+
+    stat_line = "" 
+    while keep_reading: 
+#        print ("I am here") 
+        line = leftover_line if len(leftover_line) else gps_serial.readline() 
+
+        #print(line) 
+
+        # look for GGA packet
+        if line.startswith(b'$GNGGA'): 
+            toks = str(line).split(","); 
+            utctime = int(float(toks[1]))
+            
+
+            hrs,mins,secs = int(utctime /10000), int(utctime / 100)%100, int(utctime) % 100 
+            secs += float(toks[1])-utctime 
+            lat_raw = float(toks[2]) 
+            lat = int(lat_raw / 100)  + (lat_raw - 100*int(lat_raw/100))/60.;  
+            if toks[3] == 'S': 
+                lat *=-1
+            lon_raw = float(toks[4]) 
+            lon = int(lon_raw / 100)  + (lon_raw - 100*int(lon_raw/100))/60.;  
+            if toks[5] == 'W': 
+                lon *=-1
+            fixtype = toks[6]; 
+            alt = float(toks[9]) 
+            
+            reading['hrs'] = hrs; 
+            reading['mins'] = mins; 
+            reading['secs'] = secs; 
+            reading['lat'] = lat; 
+            reading['lon'] = lon; 
+            reading['alt'] = alt; 
+            reading['fixtype'] = int(fixtype)
+            reading['nsats'] = int(toks[7]) 
+
+            stat_line =  "At %02d:%02d:%02fZ :  lat=%f, lon=%f, alt=%f, fixtype=%s" % (hrs,mins,secs,lat,lon,alt, fixtype)
+
+        #look for ubx nedpos packet
+        #TODO make this more robust for any UBX packet to avoid hiding this one 
+        # TODO check checksum 
+        if (line.startswith(b'\xb5b\x01\x3c')): 
+
+            payload_len = struct.unpack('H', line[4:6])[0]
+            if (payload_len != 64):
+                continue 
+
+            # there may be a line return in the binary data, make sure it's long enough for payload + 6 header + 2 checksum bytes
+            while (len(line) < payload_len + 6 + 2): 
+                newline = gps_serial.readline() 
+                line = line +  gps_serial.readline() 
+
+            
+            buf = line[6:] 
+            # we only support v1
+
+            #this is common between 0 and 1... oh well! 
+            (version,reserved1, refStationiD,iTOW, relPosN, relPosE, relPosD)  = struct.unpack('<BcHIiii',buf[0:20]) 
+            (relPosLength, relHeading, reserved2, relPosHPN, relPosHPE, relPosHPD, relPosHPLength, accN,accE,accD,accLength, accHeading, reserved3, flags) = struct.unpack('<iiIbbbbIIIIIII',buf[20:64])
+            
+            flags_dict = {} 
+            flags_dict['gnssFixOk'] = 0 != (flags & 1)
+            flags_dict['diffSoln'] = 0 != (flags & 2)
+            flags_dict['relPosValid'] = 0!= (flags & 4 )
+            flags_dict['isMoving'] =  0 != (flags & 0x20 )
+
+
+            if (flags_dict['relPosValid'] and lat in reading ):
+
+#                stat_line += "RelPos Vector (NED): [ %g , %g, %g] +/- [%g %g %g], len = %g+/=%g, heading = %g+/-%g, moving: %d" %(  relPosN+relPosHPN*0.1, relPosE+relPosHPN*0.1, relPosD+relPosHPD*0.1, 0.1*accN, 0.1*accE, 0.1*accD, relPosLength + relPosHPLength*0.1, accLength*0.1, relHeading*1e-5, accHeading*1e-5, flags_dict['isMoving'])
+                ###MUST DO SOME SANITY CHECKS HERE #### 
+
+                reading['idx'] +=1 
+                reading['deltaN'] = (relPosN + relPosHPN*0.1) if abs(relPosHPN) < 100 else relPosN
+                reading['deltaE'] = (relPosE + relPosHPE*0.1) if abs(relPosHPE) < 100 else relPosE
+                reading['deltaD'] = (relPosD + relPosHPD*0.1) if abs(relPosHPD) < 100 else relPosD
+                reading['sigmaN'] = min(100,accN*0.1);
+                reading['sigmaE'] = min(100,accE*0.1);
+                reading['sigmaD'] = min(100,accD*0.1); 
+                reading['Length'] = relPosHPLength*0.1 + relPosLength if abs(relPosHPLength) < 100 else resPosLength; 
+                reading['sigmaLength'] = min(100,accLength * 0.1); 
+                reading['Heading']  = relHeading * 1e-5; 
+                reading['sigmaHeading']  = min(100,accHeading * 1e-5); 
+                reading['moving'] = flags_dict['isMoving']
+                GLib.idle_add(addReading,reading) 
+
+
+            leftover_line = line[payload_len + 8:]; 
+        else: 
+
+          leftover_line = ""
+        GLib.idle_add(setStatus,stat_line) 
+
+    serial_done = True
+    print ("Exiting serial thread") 
+
+
+
+class RoverWindow(Gtk.ApplicationWindow): 
+
+    def fill_serial_ports(self,button=None): 
+
+        selected = self.serial_select.get_active_text() 
+
+        
+        self.serial_select.remove_all() 
+        comports = serial.tools.list_ports.comports()
+        comport_labels = [] 
+        for comport in comports: 
+            comport_labels.append(comport.device) 
+
+
+        comport_labels.sort() 
+        idx = 0
+        chosen_idx = 0
+        for comport in comport_labels: 
+
+            #windoze default? 
+            if selected == None and comport == "COM3":
+                chosen_idx = idx 
+            #linux default? 
+            elif selected==None and comport == "/dev/ttyUSB0": 
+                chosen_idx = idx 
+            elif selected == comport:
+                chosen_idx = idx 
+            self.serial_select.append_text(comport) 
+            idx+=1
+
+        self.serial_select.set_active(chosen_idx) 
+
+    def do_save(self, button=None): 
+        dialog = Gtk.FileChooserDialog(title="Choose output file", parent =self, action = Gtk.FileChooserAction.SAVE)
+        dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.OK); 
+        filter_csv = Gtk.FileFilter() 
+        filter_csv.set_name("CSV Filtes") 
+        filter_csv.add_mime_type("text/csv") 
+        dialog.add_filter(filter_csv) 
+        dialog.set_current_name("%sZ.csv" %( str(datetime.datetime.utcnow()).replace(" ","_")) ); 
+        dialog.set_do_overwrite_confirmation(True) 
+        response = dialog.run() 
+
+        if (response == Gtk.ResponseType.OK): 
+            print ("Saving to ", dialog.get_filename())
+            saveToFile(dialog.get_filename()) 
+
+        dialog.destroy() 
+
+    
+    def do_clear(self, button=None): 
+        clearReadings() 
+
+    def do_start(self, button=None): 
+        global keep_reading
+        self.play_button.set_sensitive(False) 
+        keep_reading = True 
+        self.thread = threading.Thread(target = serial_thread, args = (self.serial_select.get_active_text(), int(self.baud_select.get_active_text())))
+        serial_done = False
+        self.thread.start()
+        self.stop_button.set_sensitive(True) 
+
+    def stop_thread(self, a=None,b=None): 
+        global keep_reading
+        keep_reading = False 
+        if self.thread !=None:
+            self.thread.join()
+        return False
+ 
+    def do_stop(self, button=None,window=None): 
+        self.stop_thread() 
+        setStatus("idle",True)
+        self.play_button.set_sensitive(True) 
+        self.stop_button.set_sensitive(False) 
+
+    def __init__(self,app): 
+        Gtk.Window.__init__(self, title="BEACON Rover GUI", application=app)
+        self.set_default_size(740,740)
+        self.set_border_width(2) 
+        self.thread = None
+
+
+        ## set up a vbox
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3) 
+        self.add(vbox) 
+
+
+
+        # serial device panel  at the top 
+        serialbox = Gtk.Box(spacing=5) 
+        serialframe = Gtk.Frame(label="Serial Port", child=serialbox)
+        vbox.pack_start(serialframe,False,False,3) 
+
+        self.serial_select = Gtk.ComboBoxText() 
+        self.serial_select.set_entry_text_column(0) 
+        self.fill_serial_ports() 
+
+        bauds = [9600, 14400, 38400,57600,115200, 460800,960000]
+
+        self.baud_select = Gtk.ComboBoxText() 
+        self.baud_select.set_entry_text_column(0) 
+        for baud in bauds: 
+            self.baud_select.append_text(str(baud))
+        self.baud_select.set_active(5) 
+
+
+        serialbox.pack_start(Gtk.Label(label="Port: "), False,False,2) 
+        serialbox.pack_start(self.serial_select,False,False,2)
+        serial_refresh = Gtk.Button.new_from_icon_name("view-refresh",0) 
+        serial_refresh.connect("clicked", self.fill_serial_ports)
+        serialbox.pack_start(serial_refresh,False,False,2); 
+        serialbox.pack_start(Gtk.Label(label="Baudrate: "), False,False,2) 
+        serialbox.pack_start(self.baud_select,False,False,2) 
+
+        
+        #control buttons 
+
+        controlbox = Gtk.Box(spacing=4) 
+        controlframe = Gtk.Frame(label="Control", child=controlbox) 
+        vbox.pack_start(controlframe,False,False,3) 
+
+        controlbox.pack_start(Gtk.Label(label="Start:"),False,False,2)
+        self.play_button = Gtk.Button.new_from_icon_name("media-playback-start",1) 
+        self.play_button.connect("clicked", self.do_start)
+        controlbox.pack_start(self.play_button,True,True,2)
+
+        self.stop_button = Gtk.Button.new_from_icon_name("process-stop",1) 
+        self.stop_button.connect("clicked", self.do_stop)
+        self.stop_button.set_sensitive(False) 
+        controlbox.pack_start(Gtk.Label(label="Stop:"),False,False,2)
+        controlbox.pack_start(self.stop_button,True,True,2)
+
+        self.clear_button = Gtk.Button.new_from_icon_name("edit-delete",1) 
+        self.clear_button.connect("clicked", self.do_clear)
+        self.clear_button.set_sensitive(False) 
+        controlbox.pack_start(Gtk.Label(label="Clear:"),False,False,2)
+        controlbox.pack_start(self.clear_button,True,True,2)
+
+
+        self.save_button = Gtk.Button.new_from_icon_name("document-save",1) 
+        self.save_button.connect("clicked", self.do_save)
+        self.save_button.set_sensitive(False); 
+        controlbox.pack_start(Gtk.Label(label="Save:"),False,False,2)
+        controlbox.pack_start(self.save_button,True,True,2)
+
+
+        # data view 
+        scroll_window = Gtk.ScrolledWindow() 
+        scroll_window.set_vexpand(True)  
+        vbox.pack_start(scroll_window,True,True,10); 
+        self.tree_view = Gtk.TreeView.new_with_model(the_list_model) 
+
+        ivar = 0
+        for var in the_vars: 
+            self.tree_view.append_column(Gtk.TreeViewColumn(var, Gtk.CellRendererText(), text=ivar))
+            ivar+=1 
+
+        scroll_window.add(self.tree_view) 
+
+        #plots! 
+
+        plotbox = Gtk.Box(spacing=2) 
+
+        self.fig = Figure(tight_layout =True) 
+        self.a_EN = self.fig.add_subplot(131)
+
+        self.a_ED = self.fig.add_subplot(132)
+        self.a_ED.set_ylabel("deltaH (cm)"); 
+
+        self.a_HL = self.fig.add_subplot(133, polar=True)
+
+        clear_and_set(self) 
+
+        self.canvas = FigureCanvas(self.fig) 
+        plotbox.pack_start(self.canvas,True,True,10) 
+        vbox.pack_start(plotbox,True,True,2)
+
+        
+        #status_bar
+        self.status_bar = Gtk.Statusbar.new() 
+        vbox.pack_end(self.status_bar,False,False,1) 
+        self.connect("delete-event", self.stop_thread)
+        
+
+
+class RoverApp(Gtk.Application): 
+    def __init__(self): 
+        Gtk.Application.__init__(self) 
+    def do_activate(self): 
+        self.win = RoverWindow(self)
+        self.win.show_all() 
+        setStatus("idle",True)
+
+    def do_startup(self): 
+        Gtk.Application.do_startup(self) 
+
+
+
+
+if __name__=="__main__": 
+    initTheArrs() 
+#    GObject.threads_init() 
+    app = RoverApp()
+    app.run() 
+    sys.exit(0) 
+
+
+
+
+
+
+
+

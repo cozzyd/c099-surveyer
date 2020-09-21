@@ -1,0 +1,111 @@
+#! /usr/bin/env python 
+
+import serial 
+import serial.tools.list_ports
+import sys
+import struct
+
+args = sys.argv 
+
+
+
+baudrate= 460800 
+
+gps_serial_device = None 
+
+if len(args) > 1:
+    gps_serial_device=args[1] 
+else: 
+    comports = serial.tools.list_ports.comports()
+
+    for comport in comports: 
+        # pick some default ones... 
+        if comport.device == "COM3": 
+            gps_serial_device = "COM3" 
+        if comport.device == "/dev/ttyUSB0": 
+            gps_serial_device = comport.device
+            
+    
+
+    if gps_serial_device == None:     
+        #pick the first! 
+        gps_serial_device=[int(config['Serial'][0])].device
+
+
+if len(args) > 2: 
+    baudrate = int(args[2])
+
+print( "Using %s at %d baud " % (gps_serial_device, baudrate))
+gps_serial = serial.Serial(gps_serial_device,baudrate) 
+
+#print(gps_serial) 
+
+leftover_line = ""
+while True: 
+
+
+    line = leftover_line if len(leftover_line) else gps_serial.readline() 
+
+    # print(line) 
+    # look for GGA packet
+    if line.startswith(b'$GNGGA'): 
+        toks = str(line).split(","); 
+        utctime = int(float(toks[1]))
+        hrs,mins,secs = utctime /1000, utctime / 100, utctime % 100 
+        lat_raw = float(toks[2]) 
+        lat = int(lat_raw / 100)  + (lat_raw - 100*int(lat_raw/100))/60.;  
+        if toks[3] == 'S': 
+            lat *=-1
+        lon_raw = float(toks[4]) 
+        lon = int(lon_raw / 100)  + (lon_raw - 100*int(lon_raw/100))/60.;  
+        if toks[5] == 'W': 
+            lon *=-1
+        fixtype = toks[6]; 
+        alt = float(toks[9]) 
+        
+        print( "At %d:%d:%dZ :  lat=%f, lon=%f, alt=%f, fixtype=%s" % (hrs,mins,secs,lat,lon,alt, fixtype))
+
+    #look for ubx nedpos packet
+    #TODO make this more robust for any UBX packet to avoid hiding this one 
+    # TODO check checksum 
+    if (line.startswith(b'\xb5b\x01\x3c')): 
+
+        payload_len = struct.unpack('H', line[4:6])[0]
+        if (payload_len != 64):
+            continue 
+
+        # there may be a line return in the binary data, make sure it's long enough for payload + 6 header + 2 checksum bytes
+        while (len(line) < payload_len + 6 + 2): 
+            newline = gps_serial.readline() 
+            line = line +  gps_serial.readline() 
+
+        
+        buf = line[6:] 
+        # we only support v1
+
+        #this is common between 0 and 1... oh well! 
+        (version,reserved1, refStationiD,iTOW, relPosN, relPosE, relPosD)  = struct.unpack('<BcHIiii',buf[0:20]) 
+        (relPosLength, relHeading, reserved2, relPosHPN, relPosHPE, relPosHPD, relPosHPLength, accN,accE,accD,accLength, accHeading, reserved3, flags) = struct.unpack('<iiIbbbbIIIIIII',buf[20:64])
+        
+        flags_dict = {} 
+        flags_dict['gnssFixOk'] = 0 != (flags & 1)
+        flags_dict['diffSoln'] = 0 != (flags & 2)
+        flags_dict['relPosValid'] = 0!= (flags & 4 )
+        flags_dict['isMoving'] =  0 != (flags & 0x20 )
+
+
+        if (flags_dict['relPosValid']):
+            print ("RelPos Vector (NED): [ %g , %g, %g] +/- [%g %g %g], len = %g+/=%g, heading = %g+/-%g, moving: %d" %(  relPosN+relPosHPN*0.1, relPosE+relPosHPN*0.1, relPosD+relPosHPD*0.1, 0.1*accN, 0.1*accE, 0.1*accD, relPosLength + relPosHPLength*0.1, accLength*0.1, relHeading*1e-5, accHeading*1e-5, flags_dict['isMoving']))
+                     
+
+
+
+        leftover_line = line[payload_len + 8:]; 
+    else: 
+
+      leftover_line = ""
+
+
+
+
+
