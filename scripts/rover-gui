@@ -235,11 +235,11 @@ def serial_thread(device,baudrate):
                 reading['deltaN'] = (relPosN + relPosHPN*0.01) if abs(relPosHPN) < 100 else relPosN
                 reading['deltaE'] = (relPosE + relPosHPE*0.01) if abs(relPosHPE) < 100 else relPosE
                 reading['deltaD'] = (relPosD + relPosHPD*0.01) if abs(relPosHPD) < 100 else relPosD
-                reading['sigmaN'] = min(1000,accN*0.1);
-                reading['sigmaE'] = min(1000,accE*0.1);
-                reading['sigmaD'] = min(1000,accD*0.1); 
-                reading['Length'] = relPosHPLength*0.1 + relPosLength if abs(relPosHPLength) < 100 else relPosLength; 
-                reading['sigmaLength'] = min(1000,accLength * 0.1); 
+                reading['sigmaN'] = min(1000,accN*0.01);
+                reading['sigmaE'] = min(1000,accE*0.01);
+                reading['sigmaD'] = min(1000,accD*0.01); 
+                reading['Length'] = relPosHPLength*0.01 + relPosLength if abs(relPosHPLength) < 100 else relPosLength; 
+                reading['sigmaLength'] = min(1000,accLength * 0.01); 
                 reading['Heading']  = relHeading * 1e-5; 
                 reading['sigmaHeading']  = min(1000,accHeading * 1e-5); 
                 reading['moving'] = flags_dict['isMoving']
