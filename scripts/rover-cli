@@ -80,7 +80,7 @@ while True:
         # there may be a line return in the binary data, make sure it's long enough for payload + 6 header + 2 checksum bytes
         while (len(line) < payload_len + 6 + 2): 
             newline = gps_serial.readline() 
-            line = line +  gps_serial.readline() 
+            line = line +  newline 
 
         
         buf = line[6:] 
@@ -88,6 +88,8 @@ while True:
 
         #this is common between 0 and 1... oh well! 
         (version,reserved1, refStationiD,iTOW, relPosN, relPosE, relPosD)  = struct.unpack('<BcHIiii',buf[0:20]) 
+        print(version,reserved1, refStationiD,iTOW, relPosN, relPosE, relPosD)
+
         (relPosLength, relHeading, reserved2, relPosHPN, relPosHPE, relPosHPD, relPosHPLength, accN,accE,accD,accLength, accHeading, reserved3, flags) = struct.unpack('<iiIbbbbIIIIIII',buf[20:64])
         
         flags_dict = {} 
@@ -97,8 +99,9 @@ while True:
         flags_dict['isMoving'] =  0 != (flags & 0x20 )
 
 
+        print (relPosLength, relPosN, relPosE, relPosD)
         if (flags_dict['relPosValid']):
-            print ("RelPos Vector (NED): [ %g , %g, %g] +/- [%g %g %g], len = %g+/=%g, heading = %g+/-%g, moving: %d" %(  relPosN+relPosHPN*0.1, relPosE+relPosHPN*0.1, relPosD+relPosHPD*0.1, 0.1*accN, 0.1*accE, 0.1*accD, relPosLength + relPosHPLength*0.1, accLength*0.1, relHeading*1e-5, accHeading*1e-5, flags_dict['isMoving']))
+            print ("RelPos Vector (NED): [ %g , %g, %g] +/- [%g %g %g], len = %g+/=%g, heading = %g+/-%g, moving: %d" %(  relPosN+relPosHPN*0.01, relPosE+relPosHPN*0.01, relPosD+relPosHPD*0.01, 0.1*accN, 0.1*accE, 0.1*accD, relPosLength + relPosHPLength*0.1, accLength*0.1, relHeading*1e-5, accHeading*1e-5, flags_dict['isMoving']))
                      
 
 

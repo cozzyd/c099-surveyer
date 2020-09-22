@@ -27,6 +27,7 @@
 import serial 
 import serial.tools.list_ports
 import sys
+import math
 import struct
 import gi 
 import time
@@ -92,6 +93,27 @@ def clear_and_set(win):
     win.a_HL.set_xlabel("Distance vs. Heading"); 
 #    win.a_HL.set_aspect('equal')
 
+
+def do_plot(ax,  x, y, dx =None, dy=None, cut = None, polar=False):
+
+    weights = numpy.ones(x.size) 
+    if cut is not None: 
+        x = x[cut] 
+        y = y[cut] 
+        if dx is not None: 
+            dx = dx[cut] 
+        if dy is not None: 
+            dy = dy[cut] 
+
+    if (dx is not None):
+        weights /= (dx*dx); 
+    if (dy is not None): 
+        weights /= (dy*dy); 
+
+    if not polar and x.size > 40: 
+        ax.hist2d(x,y,weights=weights, cmap="Blues",alpha=0.2) 
+    ax.scatter(x,y, s = max(1,50./math.sqrt(x.size)), alpha=0.4)
+
 def addReading(reading): 
     global have_data
     have_data = True
@@ -108,16 +130,16 @@ def addReading(reading):
 
 
     EN_cut = numpy.logical_and(the_arrs['sigmaE'] < 1000, the_arrs['sigmaN'] < 1000)
-    app.win.a_EN.scatter(the_arrs['deltaE'][EN_cut], the_arrs['deltaN'][EN_cut], alpha=0.5)
+    do_plot(app.win.a_EN, the_arrs['deltaE'] , the_arrs['deltaN'], the_arrs['sigmaE'], the_arrs['sigmaN'], EN_cut)
 
     ED_cut = numpy.logical_and(the_arrs['sigmaE'] < 1000, the_arrs['sigmaD'] < 1000)
-    app.win.a_ED.scatter(the_arrs['deltaE'][ED_cut], the_arrs['deltaD'][ED_cut], alpha =0.5)
+    do_plot(app.win.a_ED, the_arrs['deltaE'], the_arrs['deltaD'], the_arrs['sigmaE'], the_arrs['sigmaD'], ED_cut)
 
     ND_cut = numpy.logical_and(the_arrs['sigmaN'] < 1000, the_arrs['sigmaD'] < 1000)
-    app.win.a_ND.scatter(the_arrs['deltaD'][ND_cut], the_arrs['deltaN'][ND_cut], alpha =0.5)
+    do_plot(app.win.a_ND,the_arrs['deltaD'], the_arrs['deltaN'], the_arrs['sigmaD'], the_arrs['sigmaN'], ND_cut)
 
     heading_cut = numpy.logical_and(the_arrs['sigmaHeading'] < 1000, the_arrs['sigmaLength'] < 1000)
-    app.win.a_HL.scatter(the_arrs['Heading'][heading_cut] * numpy.pi/180, the_arrs['Length'][heading_cut], alpha=0.5)
+    do_plot(app.win.a_HL, the_arrs['Heading'] * numpy.pi/180, the_arrs['Length'], the_arrs['sigmaHeading'] * numpy.pi/80,  the_arrs['sigmaLength'], heading_cut, polar=True)
 
     app.win.save_button.set_sensitive(True) 
     app.win.clear_button.set_sensitive(True) 
@@ -210,7 +232,7 @@ def serial_thread(device,baudrate):
                     print("Interrupted!!") 
                     return 
                 newline = gps_serial.readline() 
-                line = line +  gps_serial.readline() 
+                line = line +  newline
 
             
             buf = line[6:] 
@@ -232,16 +254,16 @@ def serial_thread(device,baudrate):
                 ###MUST DO SOME SANITY CHECKS HERE #### 
 
                 reading['idx'] +=1 
-                reading['deltaN'] = (relPosN + relPosHPN*0.01) if abs(relPosHPN) < 100 else relPosN
-                reading['deltaE'] = (relPosE + relPosHPE*0.01) if abs(relPosHPE) < 100 else relPosE
-                reading['deltaD'] = (relPosD + relPosHPD*0.01) if abs(relPosHPD) < 100 else relPosD
-                reading['sigmaN'] = min(1000,accN*0.01);
-                reading['sigmaE'] = min(1000,accE*0.01);
-                reading['sigmaD'] = min(1000,accD*0.01); 
+                reading['deltaN'] = (relPosN + relPosHPN*0.01)
+                reading['deltaE'] = (relPosE + relPosHPE*0.01)
+                reading['deltaD'] = (relPosD + relPosHPD*0.01)
+                reading['sigmaN'] = min(9999.,accN*0.01);
+                reading['sigmaE'] = min(9999.,accE*0.01);
+                reading['sigmaD'] = min(9999.,accD*0.01); 
                 reading['Length'] = relPosHPLength*0.01 + relPosLength if abs(relPosHPLength) < 100 else relPosLength; 
-                reading['sigmaLength'] = min(1000,accLength * 0.01); 
+                reading['sigmaLength'] = min(9999.,accLength * 0.01); 
                 reading['Heading']  = relHeading * 1e-5; 
-                reading['sigmaHeading']  = min(1000,accHeading * 1e-5); 
+                reading['sigmaHeading']  = min(9999.,accHeading * 1e-5); 
                 reading['moving'] = flags_dict['isMoving']
                 GLib.idle_add(addReading,reading) 
 
@@ -339,6 +361,11 @@ class RoverWindow(Gtk.ApplicationWindow):
         self.play_button.set_sensitive(True) 
         self.stop_button.set_sensitive(False) 
 
+    def textViewChanged(self, *args): 
+        adj = self.scroll_window.get_vadjustment()
+        adj.set_value(adj.get_upper() - adj.get_page_size())
+
+
     def __init__(self,app): 
         Gtk.Window.__init__(self, title="BEACON Rover GUI", application=app)
         self.set_default_size(1000,740)
@@ -373,7 +400,7 @@ class RoverWindow(Gtk.ApplicationWindow):
             hb.pack_start(Gtk.Label(label="Stop:"))#,False,False,2)
         hb.pack_start(self.stop_button)#,True,True,2)
 
-        self.clear_button = Gtk.Button.new_from_icon_name("edit-delete-symbolic",1) 
+        self.clear_button = Gtk.Button.new_from_icon_name("edit-clear-all-symbolic",1) 
         self.clear_button.connect("clicked", self.do_clear)
         self.clear_button.set_sensitive(False) 
         self.clear_button.set_tooltip_text("Clear all data (Ctrl-L)") 
@@ -383,9 +410,10 @@ class RoverWindow(Gtk.ApplicationWindow):
         self.save_button.connect("clicked", self.do_save)
         self.save_button.set_sensitive(False); 
         self.save_button.set_tooltip_text("Save all data (Ctrl-S)") 
-        hb.pack_end(self.save_button)#,True,True,2)
+
         if show_button_labels:
-            hb.pack_end(Gtk.Label(label="Save:"))#,False,False,2)
+            hb.pack_start(Gtk.Label(label="Save:"))#,False,False,2)
+        hb.pack_start(self.save_button)#,True,True,2)
         hb.pack_end(self.clear_button)#,True,True,2)
         if show_button_labels:
             hb.pack_end(Gtk.Label(label="Clear:"))#,False,False,2)
@@ -397,9 +425,9 @@ class RoverWindow(Gtk.ApplicationWindow):
 
 
         # data view 
-        scroll_window = Gtk.ScrolledWindow() 
-        scroll_window.set_vexpand(True)  
-        scroll_frame = Gtk.Frame(label='Data', child=scroll_window) 
+        self.scroll_window = Gtk.ScrolledWindow() 
+        self.scroll_window.set_vexpand(True)  
+        scroll_frame = Gtk.Frame(label='Data', child=self.scroll_window) 
         vbox.pack_start(scroll_frame,True,True,10); 
         self.tree_view = Gtk.TreeView.new_with_model(the_list_model) 
 
@@ -408,8 +436,10 @@ class RoverWindow(Gtk.ApplicationWindow):
             self.tree_view.append_column(Gtk.TreeViewColumn(var, Gtk.CellRendererText(), text=ivar))
             ivar+=1 
 
-        scroll_window.add(self.tree_view) 
+        self.scroll_window.add(self.tree_view) 
 
+        self.tree_view.connect("size-allocate", self.textViewChanged)
+        
         #plots! 
 
 
@@ -506,8 +536,11 @@ class RoverApp(Gtk.Application):
 
 def handle_sigint(signum,frame): 
     print("Detected Ctrl-C interrupt") 
-    app.win.stop_thread() 
-    app.quit() 
+    try: 
+        app.win.stop_thread() 
+        app.quit() 
+    except AttributeError: 
+        sys.exit(1) 
 
 
 if __name__=="__main__": 
