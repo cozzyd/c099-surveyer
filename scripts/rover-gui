@@ -338,7 +338,11 @@ class RoverWindow(Gtk.ApplicationWindow):
     
     def do_clear(self, *args): 
         if have_data: 
-            clearReadings() 
+            warn = Gtk.MessageDialog( transient_for=self, flags=0, message_type=Gtk.MessageType.WARNING, buttons=Gtk.ButtonsType.OK_CANCEL, text="Are you sure you want to clear the data?")
+            warn.format_seconday_text("Press OK to confirm, Cancel to cancel"); 
+            resp = warn.run() 
+            if resp == Gtk.ResponseType.OK:
+                clearReadings() 
         else: 
             print("No data to clear!") 
 
