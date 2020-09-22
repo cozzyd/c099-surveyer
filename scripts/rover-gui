@@ -325,7 +325,7 @@ class RoverWindow(Gtk.ApplicationWindow):
         filter_csv.set_name("CSV Files") 
         filter_csv.add_mime_type("text/csv") 
         dialog.add_filter(filter_csv) 
-        dialog.set_current_name("%sZ.csv" %( str(datetime.datetime.utcnow()).replace(" ","_")) ); 
+        dialog.set_current_name("%sZ.csv" %( datetime.datetime.utcnow().strftime('%Y-%m-%d_%H-%M:%S.csv')) ); 
         dialog.set_do_overwrite_confirmation(True) 
         response = dialog.run() 
 
