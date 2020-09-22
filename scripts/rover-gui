@@ -64,7 +64,7 @@ def initTheArrs():
 
 def saveToFile(f): 
     #print(the_arrs) 
-    numpy.savetxt(f, list(the_arrs.values()), header=",".join(the_arrs.keys()), delimiter=',')
+    numpy.savetxt(f, numpy.transpose(list(the_arrs.values())), header=",".join(the_arrs.keys()), delimiter=',',comments='')
 
 def setStatus(status, force=False):  
     global serial_done
@@ -317,7 +317,8 @@ class RoverWindow(Gtk.ApplicationWindow):
             print("No data to save!") 
             return
 
-        ## on windows, seems to freeze if the other thread is goig
+        ## on windows, seems to freeze if the other thread is going. Something funny about the recursive main loop.. 
+        ## So we'll go ahead and stop first! 
         if keep_reading:
             self.do_stop() 
 
@@ -326,27 +327,27 @@ class RoverWindow(Gtk.ApplicationWindow):
         filter_csv = Gtk.FileFilter() 
         filter_csv.set_name("CSV Files") 
         filter_csv.add_mime_type("text/csv") 
-        dialog.add_filter(filter_csv) 
-        try_name = "%sZ.csv" %( datetime.datetime.utcnow().strftime('%Y-%m-%d_%H.%M.%S')) 
+        filter_csv.add_mime_type("text/x-csv") 
+        filter_csv.add_mime_type("application/csv") 
+        #dialog.add_filter(filter_csv) 
+        try_name = "%sZ.csv" %( datetime.datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')) 
     #    print(try_name) 
         dialog.set_current_name(try_name); 
         dialog.set_do_overwrite_confirmation(True) 
         response = dialog.run() 
+        fname = dialog.get_filename() 
+        dialog.destroy() 
 
         if (response == Gtk.ResponseType.OK): 
-            print ("Saving to ", dialog.get_filename())
-            saveToFile(dialog.get_filename()) 
+            print ("Saving to ", fname) 
+            saveToFile(fname) 
+            setStatus("Saved to "+ fname) 
 
-        dialog.destroy() 
 
     
     def do_clear(self, *args): 
         if have_data: 
-            warn = Gtk.MessageDialog( transient_for=self, flags=0, message_type=Gtk.MessageType.WARNING, buttons=Gtk.ButtonsType.OK_CANCEL, text="Are you sure you want to clear the data?")
-            warn.format_seconday_text("Press OK to confirm, Cancel to cancel"); 
-            resp = warn.run() 
-            if resp == Gtk.ResponseType.OK:
-                clearReadings() 
+            clearReadings() 
         else: 
             print("No data to clear!") 
 
