@@ -174,8 +174,6 @@ def serial_thread(device,baudrate):
     serial_done = False
     print(gps_serial) 
     reading['idx']=0.
-
-
     stat_line = "No GPS packets yet... do we have the right port?" 
     while keep_reading: 
 #        print ("I am here") 
@@ -268,7 +266,7 @@ def serial_thread(device,baudrate):
                 reading['Heading']  = relHeading * 1e-5; 
                 reading['sigmaHeading']  = min(9999.,accHeading * 1e-5); 
                 reading['moving'] = flags_dict['isMoving']
-                GLib.idle_add(addReading,reading) 
+                GLib.idle_add(addReading,dict(reading))
 
 
             leftover_line = line[payload_len + 8:]; 
@@ -319,13 +317,19 @@ class RoverWindow(Gtk.ApplicationWindow):
             print("No data to save!") 
             return
 
+        ## on windows, seems to freeze if the other thread is goig
+        if keep_reading:
+            self.do_stop() 
+
         dialog = Gtk.FileChooserDialog(title="Choose output file", parent =self, action = Gtk.FileChooserAction.SAVE)
         dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.OK); 
         filter_csv = Gtk.FileFilter() 
         filter_csv.set_name("CSV Files") 
         filter_csv.add_mime_type("text/csv") 
         dialog.add_filter(filter_csv) 
-        dialog.set_current_name("%sZ.csv" %( datetime.datetime.utcnow().strftime('%Y-%m-%d_%H-%M:%S.csv')) ); 
+        try_name = "%sZ.csv" %( datetime.datetime.utcnow().strftime('%Y-%m-%d_%H.%M.%S')) 
+    #    print(try_name) 
+        dialog.set_current_name(try_name); 
         dialog.set_do_overwrite_confirmation(True) 
         response = dialog.run() 
 
