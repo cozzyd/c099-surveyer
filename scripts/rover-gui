@@ -176,7 +176,7 @@ def serial_thread(device,baudrate):
     reading['idx']=0.
 
 
-    stat_line = "" 
+    stat_line = "No GPS packets yet... do we have the right port?" 
     while keep_reading: 
 #        print ("I am here") 
         line = leftover_line if leftover_line!=None else gps_serial.readline() 
