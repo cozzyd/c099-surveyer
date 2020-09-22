@@ -96,7 +96,6 @@ def clear_and_set(win):
 
 def do_plot(ax,  x, y, dx =None, dy=None, cut = None, polar=False):
 
-    weights = numpy.ones(x.size) 
     if cut is not None: 
         x = x[cut] 
         y = y[cut] 
@@ -105,10 +104,14 @@ def do_plot(ax,  x, y, dx =None, dy=None, cut = None, polar=False):
         if dy is not None: 
             dy = dy[cut] 
 
+
+    invvar = numpy.ones(x.size) 
     if (dx is not None):
-        weights /= (dx*dx); 
+        invvar += dx*dx; 
     if (dy is not None): 
-        weights /= (dy*dy); 
+        invvar += dy*dy
+
+    weights = 1./invvar; 
 
     if not polar and x.size > 40: 
         ax.hist2d(x,y,weights=weights, cmap="Blues",alpha=0.2) 
