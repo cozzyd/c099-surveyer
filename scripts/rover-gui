@@ -90,7 +90,7 @@ def clear_and_set(win):
 
     win.a_ED.clear() 
     win.a_ED.set_xlabel("deltaE (cm)"); 
-    win.a_ED.set_ylabel("deltaH (cm)"); 
+    win.a_ED.set_ylabel("deltaD (cm)"); 
 #    win.a_ED.set_aspect('equal')
     win.a_sigma.clear() 
     win.a_sigma.set_xlabel("Iteration"); 
