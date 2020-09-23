@@ -45,6 +45,8 @@ gi.require_version('Gtk', '3.0')
 
 from gi.repository import GLib,Gtk,GObject,Gdk
 
+comports_we_like=("/dev/ttyUSB0","COM3","COM5") 
+
 #some global state
 app = None 
 serial_done = False 
@@ -89,8 +91,9 @@ def clear_and_set(win):
     win.a_ED.set_xlabel("deltaE (cm)"); 
     win.a_ED.set_ylabel("deltaH (cm)"); 
 #    win.a_ED.set_aspect('equal')
-    win.a_HL.clear() 
-    win.a_HL.set_xlabel("Distance vs. Heading"); 
+    win.a_sigma.clear() 
+    win.a_sigma.set_xlabel("Iteration"); 
+    win.a_sigma.set_ylabel("sigma (cm)"); 
 #    win.a_HL.set_aspect('equal')
 
 
@@ -141,8 +144,11 @@ def addReading(reading):
     ND_cut = numpy.logical_and(the_arrs['sigmaN'] < 1000, the_arrs['sigmaD'] < 1000)
     do_plot(app.win.a_ND,the_arrs['deltaD'], the_arrs['deltaN'], the_arrs['sigmaD'], the_arrs['sigmaN'], ND_cut)
 
-    heading_cut = numpy.logical_and(the_arrs['sigmaHeading'] < 1000, the_arrs['sigmaLength'] < 1000)
-    do_plot(app.win.a_HL, the_arrs['Heading'] * numpy.pi/180, the_arrs['Length'], the_arrs['sigmaHeading'] * numpy.pi/80,  the_arrs['sigmaLength'], heading_cut, polar=True)
+    app.win.a_sigma.plot(the_arrs['sigmaN'], label="sigmaN")
+    app.win.a_sigma.plot(the_arrs['sigmaE'], label="sigmaE")
+    app.win.a_sigma.plot(the_arrs['sigmaD'], label="sigmaD")
+    app.win.a_sigma.plot(the_arrs['sigmaLength'], label = "sigmaLength")
+    app.win.a_sigma.legend()
 
     app.win.save_button.set_sensitive(True) 
     app.win.clear_button.set_sensitive(True) 
@@ -298,10 +304,13 @@ class RoverWindow(Gtk.ApplicationWindow):
         chosen_idx = 0
         for comport in comport_labels: 
 
-            #windoze default? 
+
+           
+            # some sensibilish defaults
             if selected == None and comport == "COM3":
                 chosen_idx = idx 
-            #linux default? 
+            elif selected == None and comport == "COM5":
+                chosen_idx = idx 
             elif selected==None and comport == "/dev/ttyUSB0": 
                 chosen_idx = idx 
             elif selected == comport:
@@ -462,7 +471,7 @@ class RoverWindow(Gtk.ApplicationWindow):
 
         self.a_ND = self.fig.add_subplot(143)
 
-        self.a_HL = self.fig.add_subplot(144, polar=True)
+        self.a_sigma = self.fig.add_subplot(144)
 
         clear_and_set(self) 
 
