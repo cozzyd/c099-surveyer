@@ -153,8 +153,8 @@ def addReading(reading):
     app.win.save_button.set_sensitive(True) 
     app.win.clear_button.set_sensitive(True) 
 
-    app.win.canvas.draw() 
-    app.win.canvas.flush_events() 
+    app.win.canvas.draw_idle() 
+#    app.win.canvas.flush_events() 
 
 def clearReadings():
     global have_data 
