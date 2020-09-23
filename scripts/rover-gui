@@ -53,6 +53,7 @@ serial_done = False
 keep_reading = False
 show_button_labels = False
 have_data = False; 
+just_saved = False 
 
 # what we fill in! 
 the_vars = ['idx','lat','lon','alt','hrs','mins','secs','fixtype','deltaN','sigmaN','deltaE','sigmaE','deltaD','sigmaD','Length','sigmaLength','Heading','sigmaHeading', 'moving','nsats']
@@ -122,7 +123,10 @@ def do_plot(ax,  x, y, dx =None, dy=None, cut = None, polar=False):
 
 def addReading(reading): 
     global have_data
+    global just_saved
     have_data = True
+    just_saved = False
+
 
     #print(reading) 
 
@@ -351,12 +355,22 @@ class RoverWindow(Gtk.ApplicationWindow):
             print ("Saving to ", fname) 
             saveToFile(fname) 
             setStatus("Saved to "+ fname) 
+            just_saved = True
 
 
     
     def do_clear(self, *args): 
         if have_data: 
-            clearReadings() 
+            ok_to_clear = just_saved
+            if not just_saved: 
+                warn = Gtk.MessageDialog(transient_for=self, flags=0, message_type=Gtk.MessageType.WARNING, buttons=Gtk.ButtonsType.OK_CANCEL, text = "Latest data not saved, are you sure you want to clear?")
+                warn.format_secondary_text("Press OK to confirm, Cancel to cancel. This dialog does not appear after saving. "); 
+                resp = warn.run() 
+                warn.destroy() 
+                if resp == Gtk.ResponseType.OK:
+                    ok_to_clear = True
+            if ok_to_clear: 
+                clearReadings() 
         else: 
             print("No data to clear!") 
 
