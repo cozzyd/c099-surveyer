@@ -326,14 +326,16 @@ class RoverWindow(Gtk.ApplicationWindow):
 
     def do_save(self, *args): 
 
+        global just_saved 
         if not have_data: 
             print("No data to save!") 
             return
 
         ## on windows, seems to freeze if the other thread is going. Something funny about the recursive main loop.. 
         ## So we'll go ahead and stop first! 
-        if keep_reading:
-            self.do_stop() 
+        ## Nevermind, getting rid of flush_events seems to fix! 
+        #if keep_reading:
+        #    self.do_stop() 
 
         dialog = Gtk.FileChooserDialog(title="Choose output file", parent =self, action = Gtk.FileChooserAction.SAVE)
         dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.OK); 
