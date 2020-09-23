@@ -227,19 +227,9 @@ A fool-proof method to get the serial port right is presented in the troubleshoo
 
 In the middle is a table of collected relative position data and some diagnostic plots. When there is an RTK solution and we are taking data, a new row should appear about once a second. If we have a good solution, then the values for delta N (/orth), delta E (East) and delta D (Down?) should cluster and sigma N/E/D should be relatively small (those are all plotted). If it's jumping around a lot, we probably don't have a good solution yet. 
 
-Once it's clear that we're getting data from the rover stop data taking and clear. 
+\subsection{Measuring the positions of the BEACON antennas} 
 
-Next you'll want to move the base antenna to each of the BEACON antennas (how
-you'll get it up there, I'm not sure? A long stick?) For each location of the
-base antenna, take some data (probably a minute or so is fine if we're getting
-reasonable measurements) and save it (preferably with a name that tells us
-which antenna it is!). Then clear and move on to the next BEACON antenna. 
-
-Alternatively, you can start taking data prior to moving the base antenna next
-to a BEACON antenna as long as you put the base antenna next to the BEACON
-antenna for long enough so that it's obvious once we look through the measurements... 
-
-It's probably a good idea to take a few practice measurements first to get a feel for the process. 
+Using this system, it is possible to measure the relative positions of the BEACON antenna masts relative to a fixed point. To do this, place the base antenna at the base of each mast, let it get a fix, then go to the laptop, clear any existing data and record data until we have enough readings that seem reasonable, meaning  that the points start getting clustered together and the errors (sigmas) on the distances are small. Oncce we have enough good points, save (with the mast number), and move the base antenna to the next mast and repeat. Make sure you leave the rover antenna fixed for the entire duration so that all measurements have the same reference point. 
 
 \section{Troubleshooting} 
 
