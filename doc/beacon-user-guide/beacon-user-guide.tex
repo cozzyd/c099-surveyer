@@ -30,9 +30,9 @@ surveying system.
 
 The purpose of the system is to precisely measure the three-dimensional
 positions  of a set of points relative to a common origin. In particular, for
-BEACON, we need to know the relative position sof the antenna in
+BEACON, we need to know the relative positions of the antenna in
 three-dimensions to a few centimeters in order to make measurements.  The
-system uses two Global Navigation Satellite Service (GNSS, although GPS is used mostly interchangeably in this document) units that can talk to each other wirelesslyand a laptop
+system uses two Global Navigation Satellite Service (GNSS, although GPS is used mostly interchangeably in this document) units that can talk to each other wirelessly and a laptop
 for logging the data. 
 
 For any questions, please contact Cosmin via e-mail, or, if urgent, by mobile phone (775.846.9105).
@@ -48,8 +48,9 @@ For any questions, please contact Cosmin via e-mail, or, if urgent, by mobile ph
 GNSS systems work by measuring relative time delays of radio signals from
 various satellite constellations. The most well-known is the Global Positioning
 System (GPS) commissioned by the United States, but nowadays there are several
-other constellations (the Russioan GLONASS, European Galileo, and Chinese
+other constellations (the Russian GLONASS, European Galileo, and Chinese
 Beidou) that can be used in concert. Still, in this document GPS and GNSS will 
+be used mostly interchangeably.
 
 Normally, at least with the unrestricted civilian bands, one can obtain
 position accuracy of around 1 meter with a GNSS receiver. The precision is limited
@@ -60,9 +61,9 @@ Earth's atmosphere (the ionosphere), that cannot be perfectly corrected for.
 However, if you have two receivers that are relatively close together, they
 experience almost exactly the same fluctuations for every satellite. This means
 that if you only care about the relative position of the two units, you can
-essentially subtract out the atmospheric fluctuations, giving allowing
+essentially subtract out the atmospheric fluctuations, allowing
 measurement of relative positions to an accuracy of a few cm under good
-conditions. A system set up to do this is genrally called a Real-Time Kinematic
+conditions. A system set up to do this is generally called a Real-Time Kinematic
 (RTK) system. 
 
 Moreover, there are multiple frequencies available with GNSS satellites, and
@@ -124,7 +125,7 @@ configured differently, although all other components are interchangeable.
 \end{center} 
 
 Each unit has two RF connectors (SMA-type). One is for the WiFi antenna, the
-other is for the GNSS (labeled GPS on the uunit) antenna. \textbf{The GPS Antenna is active so it should be
+other is for the GNSS (labeled GPS on the unit) antenna. \textbf{The GPS Antenna is active so it should be
 plugged in while the sytem is off. Turning the system on without the GPS
 antenna plugged in could result in a shock and/or damage to the system.}. 
 
@@ -141,7 +142,7 @@ process!!!}
 
 On the back is a microusb port and a DC power port. The boards can be powered
 over microusb if they are plugged into a computer (a microusb cable is
-provided) , but, at least for me, using e.g. a USB battery bank, the microusb
+provided), but, at least for me, using e.g. a USB battery bank, the microusb
 connector didn't work for power and I had to power it through the DC port via
 the USB-to-DC cable. \textbf{You probably don't want to plug in both the DC
 cable and the micro-usb cable}. 
@@ -178,7 +179,7 @@ This section describes the recommended method to perform the measurement. Please
 If you haven't already, plug in the GPS antenna and WiFi antenna into the Base
 unit. Even though this is called the base, since it does not need to be
 connected to a laptop for readout, it is probably easier to move the ``base" around and
-keep the ``rover" stationary!  Either is fine, but I'm guessing it will be easier not to have tomovemvoe the laptop. 
+keep the ``rover" stationary!  Either is fine, but I'm guessing it will be easier not to have to move the laptop. 
 
 Either way, the base should be turned on first because
 the Rover must connect to the Base (of course, after powering on, you can
@@ -188,7 +189,7 @@ the wrong order).
 I recommend using a USB battery bank with the USB to DC connector to power the
 base. Any decent battery bank should power the unit for many hours. I do not
 recommend plugging it via microusb into the same laptop as the Rover because then it will
-make it more difficult to figure out which receiver you talking to with the
+make it more difficult to figure out which receiver you are talking to with the
 laptop. 
 
 The blue LED should start blinking once a second relatively soon after turning it on outside. 
@@ -215,7 +216,7 @@ getting an RTK solution and we need to figure out why.
 
 \subsection{Reading out data from the rover} 
 
-Start the GUI program (upper left corner of the desktop). A command window will pop up and a few seconds a gui will pop up. An annotated version is below:
+Start the GUI program (upper left corner of the desktop). A command window will pop up and in a few seconds a gui will pop up. An annotated version is below:
 
 \begin{center} 
 \includegraphics[width=4in]{gui} 
@@ -225,11 +226,11 @@ On the top are the controls to start taking data, stop taking data, save the dat
 On the bottom is  the configuration for the serial port and the status bar. Unfortunately, the GPS receiver actually presents 3 different serial ports to the laptop, and only two of the three can be used to communicate with it. Because the names are not consistent, sometimes we get it wrong. If you start taking data but the status bar says something about no data being received, either the blue light isn't flashing on the Rover (unlikely if you've waited more than a few seconds and are outside) or the wrong serial port is selected. Stop taking data and try a different one. 
 A fool-proof method to get the serial port right is presented in the troubleshooting section.
 
-In the middle is a table of collected relative position data and some diagnostic plots. When there is an RTK solution and we are taking data, a new row should appear about once a second. If we have a good solution, then the values for delta N (/orth), delta E (East) and delta D (Down?) should cluster and sigma N/E/D should be relatively small (those are all plotted). If it's jumping around a lot, we probably don't have a good solution yet. 
+In the middle is a table of collected relative position data and some diagnostic plots. When there is an RTK solution and we are taking data, a new row should appear about once a second. If we have a good solution, then the values for delta N (North), delta E (East) and delta D (Down?) should cluster and sigma N/E/D should be relatively small (those are all plotted). If it's jumping around a lot, we probably don't have a good solution yet. 
 
 \subsection{Measuring the positions of the BEACON antennas} 
 
-Using this system, it is possible to measure the relative positions of the BEACON antenna masts relative to a fixed point. To do this, place the base antenna at the base of each mast, let it get a fix, then go to the laptop, clear any existing data and record data until we have enough readings that seem reasonable, meaning  that the points start getting clustered together and the errors (sigmas) on the distances are small. Oncce we have enough good points, save (with the mast number), and move the base antenna to the next mast and repeat. Make sure you leave the rover antenna fixed for the entire duration so that all measurements have the same reference point. 
+Using this system, it is possible to measure the relative positions of the BEACON antenna masts relative to a fixed point. To do this, place the base antenna at the base of each mast, let it get a fix, then go to the laptop, clear any existing data and record data until we have enough readings that seem reasonable, meaning  that the points start getting clustered together and the errors (sigmas) on the distances are small. Once we have enough good points, save (with the mast number), and move the base antenna to the next mast and repeat. Make sure you leave the rover antenna fixed for the entire duration so that all measurements have the same reference point. 
 
 \section{Troubleshooting} 
 
@@ -265,7 +266,7 @@ Yes, that's because the laptop is slow and doesn't have enough memory. Sorry. I 
 \begin{itemize} 
 \item STL files for the two parts of the 3-D printable enclosure are provided, as well as a FreeCAD project. 
 \item Source code for the data logger is under \texttt{scripts/rover-gui}. 
-\item Documentatio is available under the doc directory 
+\item Documentation is available under the doc directory 
 \end{itemize} 
 \end{itemize} 
 
